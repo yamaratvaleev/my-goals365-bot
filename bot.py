@@ -1,10 +1,10 @@
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackContext
 
-async def start(update: Update, context: CallbackContext.DEFAULT_TYPE):
+async def start(update: Update, context: CallbackContext):
     await update.message.reply_text("Привет! Я помогу вам ставить и достигать личные цели. Используйте команду /addgoal для начала.")
 
-async def add_goal(update: Update, context: CallbackContext.DEFAULT_TYPE):
+async def add_goal(update: Update, context: CallbackContext):
     await update.message.reply_text("Напишите вашу цель, и я сохраню её для вас!")
 
 app = ApplicationBuilder().token("8114842914:AAGyYEZUQCenQuf96nooDi4cr7ct5AYlFAI").build()
