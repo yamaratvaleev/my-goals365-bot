@@ -1,36 +1,59 @@
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 
-async def start(update: Update, context: CallbackContext):
-    await update.message.reply_text("Привет! Я помогу вам ставить и достигать личные цели. Используйте команду /addgoal для начала.")
-
-async def add_goal(update: Update, context: CallbackContext):
-    await update.message.reply_text("Напишите вашу цель, и я сохраню её для вас!")
-
-app = ApplicationBuilder().token("8114842914:AAGyYEZUQCenQuf96nooDi4cr7ct5AYlFAI").build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("addgoal", add_goal))
-
-if __name__ == "__main__":
-    app.run_polling()
-# Хранилище целей
+# Словарь для хранения целей пользователей
 goals = {}
 
-# Команда для добавления цели
+# Функция для команды /start
+async def start(update: Update, context: CallbackContext):
+    await update.message.reply_text(
+        "Привет! Я помогу вам ставить и достигать личные цели. "
+        "Используйте команду /addgoal для добавления цели, "
+        "и /listgoals для просмотра ваших целей."
+    )
+
+# Функция для команды /addgoal
 async def add_goal(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
-    goal = ' '.join(context.args)
     if user_id not in goals:
         goals[user_id] = []
-    goals[user_id].append(goal)
-    await update.message.reply_text(f'Цель "{goal}" добавлена!')
+    await update.message.reply_text("Напишите вашу цель, и я сохраню её для вас!")
 
-# Команда для отображения списка целей
-async def show_goals(update: Update, context: CallbackContext):
+    # Ожидание следующего сообщения для добавления цели
+    context.user_data['awaiting_goal'] = True
+
+# Функция для добавления цели из текстового сообщения
+async def save_goal(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
-    user_goals = goals.get(user_id, [])
-    if not user_goals:
-        await update.message.reply_text('У вас пока нет целей.')
+    if context.user_data.get('awaiting_goal'):
+        goals[user_id].append(update.message.text)
+        context.user_data['awaiting_goal'] = False
+        await update.message.reply_text("Цель успешно добавлена!")
+
+# Функция для команды /listgoals
+async def list_goals(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    if user_id in goals and goals[user_id]:
+        goals_text = '\n'.join(f"{idx + 1}. {goal}" for idx, goal in enumerate(goals[user_id]))
+        await update.message.reply_text(f"Ваши цели:\n{goals_text}")
     else:
-        goals_text = '\n'.join([f"{i + 1}. {g}" for i, g in enumerate(user_goals)])
-        await update.message.reply_text(f'Ваши цели:\n{goals_text}')
+        await update.message.reply_text("У вас пока нет сохраненных целей. Добавьте новую с помощью /addgoal.")
+
+# Основной блок приложения
+def main():
+    # Создаем приложение
+    app = Application.builder().token("ВАШ_ТОКЕН_БОТА").build()
+
+    # Регистрация обработчиков команд
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("addgoal", add_goal))
+    app.add_handler(CommandHandler("listgoals", list_goals))
+
+    # Обработчик текстовых сообщений для сохранения целей
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, save_goal))
+
+    # Запуск бота
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
